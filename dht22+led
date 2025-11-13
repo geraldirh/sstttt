@@ -1,0 +1,66 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <DHT.h>
+
+#define WIFI_SSID "Wokwi-GUEST"
+#define WIFI_PASSWORD ""
+#define FIREBASE_URL "https://cihuy-26478-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json"
+
+#define DHTPIN 15
+#define DHTTYPE DHT22
+#define LED_PIN 2
+
+DHT dht(DHTPIN, DHTTYPE);
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(LED_PIN, OUTPUT);
+  dht.begin();
+
+  Serial.println("Menghubungkan ke WiFi...");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+  Serial.println("\n✅ WiFi Terhubung!");
+}
+
+void loop() {
+  float suhu = dht.readTemperature();
+  float kelembaban = dht.readHumidity();
+
+  if (isnan(suhu) || isnan(kelembaban)) {
+    Serial.println("⚠️ Gagal membaca DHT22!");
+    delay(2000);
+    return;
+  }
+
+  // Kontrol LED berdasarkan suhu
+  if (suhu > 30) {
+    digitalWrite(LED_PIN, HIGH);
+    Serial.println("🔥 LED ON (suhu > 30°C)");
+  } else {
+    digitalWrite(LED_PIN, LOW);
+    Serial.println("💧 LED OFF (suhu <= 30°C)");
+  }
+
+  // Kirim data ke Firebase
+  HTTPClient http;
+  http.begin(FIREBASE_URL);
+  http.addHeader("Content-Type", "application/json");
+
+  String payload = "{\"suhu\":" + String(suhu, 1) + ",\"kelembaban\":" + String(kelembaban, 1) + "}";
+  int httpResponseCode = http.PUT(payload);
+
+  if (httpResponseCode > 0) {
+    Serial.print("✅ Data terkirim: ");
+    Serial.println(payload);
+  } else {
+    Serial.print("❌ Gagal kirim data. Kode: ");
+    Serial.println(httpResponseCode);
+  }
+
+  http.end();
+  delay(5000);
+}
