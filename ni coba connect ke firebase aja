@@ -1,0 +1,57 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+#define WIFI_SSID "Wokwi-GUEST"
+#define WIFI_PASSWORD ""
+
+// Ganti dengan URL database kamu (gunakan format akhir .json)
+#define FIREBASE_URL "https://cihuy-26478-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json"
+
+void setup() {
+  Serial.begin(9600);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Menghubungkan ke WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+  Serial.println("\nWiFi Terhubung!");
+
+  // Kirim data awal
+  HTTPClient http;
+  http.begin(FIREBASE_URL);
+
+  http.addHeader("Content-Type", "application/json");
+  String payload = "{\"value\":42}";
+  int httpResponseCode = http.PUT(payload);
+
+  if (httpResponseCode > 0) {
+    Serial.println("Data terkirim ke Firebase!");
+    Serial.println(http.getString());
+  } else {
+    Serial.print("Gagal kirim data. Kode: ");
+    Serial.println(httpResponseCode);
+  }
+
+  http.end();
+}
+
+void loop() {
+  // Kirim data acak setiap 5 detik
+  int nilai = random(0, 100);
+  HTTPClient http;
+  http.begin(FIREBASE_URL);
+  http.addHeader("Content-Type", "application/json");
+
+  String payload = "{\"value\":" + String(nilai) + "}";
+  int httpResponseCode = http.PUT(payload);
+
+  if (httpResponseCode > 0) {
+    Serial.println("Update: " + String(nilai));
+  } else {
+    Serial.println("Error kirim data!");
+  }
+
+  http.end();
+  delay(5000);
+}
